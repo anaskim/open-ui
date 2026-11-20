@@ -134,6 +134,16 @@ This approach offers several advantages:
 - Simplified styling and attribute management
 - One element type that scales from a single handle to N handles
 
+### Shared Track Direction
+
+The group owns the shared track's coordinate system. We propose placing the group minimum at the track's **inline-start** and the maximum at **inline-end**, determined by the `<rangegroup>` element's writing mode and direction. Thumb positions, segments, ticks, and pointer-to-value mapping all use this same axis. A child input's own writing mode or direction does not rotate or reverse the shared track.
+
+These are CSS [flow-relative directions](https://drafts.csswg.org/css-writing-modes-4/#logical-directions), not fixed physical sides. For example, with `horizontal-tb`, inline-start is left in LTR and right in RTL; with `sideways-lr` and LTR, it is bottom rather than top. The terms follow the **used** direction, including the effect of [`text-orientation: upright`](https://drafts.csswg.org/css-writing-modes-4/#valdef-text-orientation-upright), rather than reading the computed `direction` value in isolation.
+
+This follows the rendering model proposed for native range inputs in [WHATWG HTML PR #13054](https://github.com/whatwg/html/pull/13054). That change is still under review; this section proposes alignment, not a claim that the HTML change has landed or that all browsers already agree. It does not settle the separate orientation-property questions in [#1525](https://github.com/openui/open-ui/issues/1525).
+
+Rendering direction does not by itself specify arrow-key mappings. Those remain a separate interaction question: any mapping that depends on writing mode or direction must use the group's shared frame, not an independently styled child input. See [Keyboard Interaction](#keyboard-interaction).
+
 ### Example usage (two handles):
 
 ```html
@@ -167,16 +177,6 @@ In a supporting browser this is enough: omitted child `min`/`max` resolve to the
 In a supporting browser this still renders as the `<rangegroup>` slider (one thumb on the group track), not as a hidden wrapper. In a non-supporting browser it is a labeled `<input type="range">` as today.
 
 The `<rangegroup>` element presents child ranges as handles on a common track, while maintaining the individual inputs for form submission and JavaScript interaction.
-
-### Shared Track Direction
-
-The group owns the shared track's coordinate system. We propose placing the group minimum at the track's **inline-start** and the maximum at **inline-end**, determined by the `<rangegroup>` element's writing mode and direction. Thumb positions, segments, ticks, and pointer-to-value mapping all use this same axis. A child input's own writing mode or direction does not rotate or reverse the shared track.
-
-These are CSS [flow-relative directions](https://drafts.csswg.org/css-writing-modes-4/#logical-directions), not fixed physical sides. For example, with `horizontal-tb`, inline-start is left in LTR and right in RTL; with `sideways-lr` and LTR, it is bottom rather than top. The terms follow the **used** direction, including the effect of [`text-orientation: upright`](https://drafts.csswg.org/css-writing-modes-4/#valdef-text-orientation-upright), rather than reading the computed `direction` value in isolation.
-
-This follows the rendering model proposed for native range inputs in [WHATWG HTML PR #13054](https://github.com/whatwg/html/pull/13054). That change is still under review; this section proposes alignment, not a claim that the HTML change has landed or that all browsers already agree. It does not settle the separate orientation-property questions in [#1525](https://github.com/openui/open-ui/issues/1525).
-
-Rendering direction does not by itself specify arrow-key mappings. Those remain a separate interaction question: any mapping that depends on writing mode or direction must use the group's shared frame, not an independently styled child input. See [Keyboard Interaction](#keyboard-interaction).
 
 ### Empty `<rangegroup>`
 
