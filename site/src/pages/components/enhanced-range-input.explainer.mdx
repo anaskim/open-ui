@@ -168,6 +168,44 @@ In a supporting browser this still renders as the `<rangegroup>` slider (one thu
 
 The `<rangegroup>` element presents child ranges as handles on a common track, while maintaining the individual inputs for form submission and JavaScript interaction.
 
+### Proposed Content Model
+
+Open UI [resolved in #1541](https://github.com/openui/open-ui/issues/1541#issuecomment-7019655303) to develop an explainer PR for the content model, with two constraints: nested `<rangegroup>` elements are non-conforming, and a group's `<legend>` has phrasing content but no interactive descendants. The rules below propose the rest of the model for discussion; they are not all resolved decisions.
+
+We propose an optional `<legend>` as the first element child, followed by [flow content](https://html.spec.whatwg.org/multipage/dom.html#flow-content), with these restrictions throughout the group's descendants:
+
+- No nested `<rangegroup>` or `<form>` elements.
+- No [interactive content](https://html.spec.whatwg.org/multipage/dom.html#interactive-content) except `<input type="range">` handles and `<label>` elements for those handles, outside the group legend. Other input types, buttons, links, and other interactive widgets belong outside the group.
+- No `<iframe>`, `<embed>`, `<object>`, `<audio>`, or `<video>` elements, even without controls. Non-interactive images and SVG illustrations may accompany descriptions or labels.
+- No editing hosts or elements with a `tabindex` attribute except the range inputs. This also excludes making a supporting wrapper or custom element into an additional interactive control.
+- At most one direct-child `<legend>`, in the first position described above. Its content must be [phrasing content](https://html.spec.whatwg.org/multipage/dom.html#phrasing-content), with no interactive descendants, editing hosts, or descendants with `tabindex`. The exceptions for range inputs and their labels do not apply inside this legend.
+
+These are additional restrictions, not replacements for each descendant's own content model. They allow descriptions, `<output>`, labels, layout wrappers such as `<div>` and `<span>`, and non-interactive custom-element wrappers without turning the group into a container for unrelated controls. Script-supporting elements remain permitted where HTML allows them. Only participating range inputs supply thumbs; supporting content does not become a thumb or a segment. Shadow-tree and slot participation remain a separate question in [#1542](https://github.com/openui/open-ui/issues/1542).
+
+For example, the description and output below are supporting content, while the two wrapped inputs supply the handles:
+
+```html
+<rangegroup min="0" max="100" aria-describedby="budget-help">
+    <legend>Budget</legend>
+    <p id="budget-help">Choose a minimum and maximum.</p>
+    <div class="handles">
+        <label>Minimum <input id="budget-min" type="range" name="minimum" value="25" /></label>
+        <label>Maximum <input id="budget-max" type="range" name="maximum" value="75" /></label>
+    </div>
+    <output for="budget-min budget-max">25 to 75</output>
+</rangegroup>
+```
+
+The output is author-managed; this example does not imply automatic value binding. A separate exact-value number input, help link, or help button can be placed next to the group instead of inside it.
+
+#### Non-conforming Content
+
+Author conformance and handling of an existing DOM are separate. We propose that non-conforming content does not cause the UA to remove, reparent, or make unrelated descendants inert. Ordinary semantics, including form ownership and focusability, continue to apply; non-range controls do not gain handles or inherit the rangegroup's disabled contribution.
+
+For nested groups constructed by markup or script, the proposed recovery rule is nearest DOM-ancestor ownership: an input belongs to its nearest `<rangegroup>`, not an outer group. Inner groups do not contribute thumbs or aggregate disabledness to outer groups. A range input placed inside the group legend still participates and is disabled by the group; there is no first-legend exemption. These recovery rules do not make either authoring pattern conforming.
+
+The exact UA layout of supporting and non-conforming content relative to the shared track remains open. This proposal does not add a parser repair rule, prescribe before/after-track placement, or settle shadow-tree participation. Those questions can be discussed separately from the allowed-content rules.
+
 ### Empty `<rangegroup>`
 
 A group of **zero** is also valid. A `<rangegroup>` that contains no `<input type="range">` renders **an empty track**: the track is painted as normal, with no thumbs on it ([#1515](https://github.com/openui/open-ui/issues/1515), [telecon 10 Sep 2026](https://www.w3.org/2026/09/10-openui-minutes.html)).
@@ -301,11 +339,11 @@ When a user navigates into a `<rangegroup>` for the first time (focusing the fir
 
 ## Disabled State
 
-The `<rangegroup>` element supports the `disabled` attribute, following the same propagation model as `<fieldset>`. This provides both group-level and individual-handle control over interactivity.
+The `<rangegroup>` element supports the `disabled` attribute for group-level control over its participating range inputs. Like `<fieldset>`, it preserves each input's own `disabled` attribute; the proposed [content and recovery rules](#proposed-content-model) differ for unrelated controls and legend descendants.
 
 ### Group-Level Disabling
 
-When the `disabled` attribute is set on the `<rangegroup>` element, the entire control becomes non-interactive. All thumbs are removed from the tab order, pointer interactions on the track and thumbs are ignored, and the contained inputs are excluded from form submission.
+When the `disabled` attribute is set on the `<rangegroup>` element, the shared control becomes non-interactive. All participating thumbs are removed from the tab order, pointer interactions on the track and thumbs are ignored, and the participating range inputs are excluded from form submission. This does not disable unrelated controls in non-conforming content.
 
 ```html
 <rangegroup disabled>
@@ -351,7 +389,7 @@ If a `<rangegroup>` is disabled and later re-enabled (by removing the `disabled`
 
 ### Legend Contents
 
-`<fieldset disabled>` deliberately [does not disable form controls inside its first `<legend>`](https://html.spec.whatwg.org/multipage/form-elements.html#the-fieldset-element), which is what makes the "checkbox in the legend enables the fieldset" pattern work. Because `<rangegroup>` is expected to contain only range handles, we propose the simpler rule: the `<legend>` of a `<rangegroup>` should not contain form controls. If it does, matching the `<fieldset>` exception is the safer default.
+`<fieldset disabled>` deliberately [does not disable form controls inside its first `<legend>`](https://html.spec.whatwg.org/multipage/form-elements.html#the-fieldset-element), which supports the "checkbox in the legend enables the fieldset" pattern. The [proposed rangegroup content model](#proposed-content-model) instead requires non-interactive phrasing content in the group legend. For non-conforming markup, we propose no first-legend exemption: a participating range input inside the legend is disabled just like any other handle. An unrelated control inside that legend retains its ordinary behavior, but is not conforming content.
 
 ### Progressive Enhancement
 
@@ -903,6 +941,7 @@ The following items have been discussed in Open UI telecons. GitHub issues may r
 - **Value tooltips / bubbles** ([#1523](https://github.com/openui/open-ui/issues/1523), [telecon 8 Oct 2026](https://www.w3.org/2026/10/08-openui-minutes.html)): **Resolved:** remove built-in tooltips by default and do not introduce a dedicated tooltip pseudo-element in v1. Custom tooltips are authored using modern platform capabilities like CSS Anchor Positioning with `<output>` or `<label>`, keeping full control over styling, DOM accessibility, and number formatting. See [Visual Presentation of Labels](#visual-presentation-of-labels).
 - **Thumb index follows DOM order** ([#1524](https://github.com/openui/open-ui/issues/1524), [telecon 8 Oct 2026](https://www.w3.org/2026/10/08-openui-minutes.html)): **Resolved:** the index `n` in `::slider-thumb(n)` follows the DOM order of the child `<input type="range">` elements, reflowing when elements are inserted or removed. Further microsyntax exploration (such as `An+B`) remains open. See [Pseudo-elements](#pseudo-elements).
 - **Vertical orientation and writing modes** ([#1525](https://github.com/openui/open-ui/issues/1525), [telecon 8 Oct 2026](https://www.w3.org/2026/10/08-openui-minutes.html)): **Resolved:** wait for CSSWG on how attributes vs `writing-mode` resolve for range inputs generally; `<rangegroup>` follows whatever `<input type="range">` supports. Child inputs do not have independent orientations or frames. See [Considerations and Open Questions](#considerations-and-open-questions).
+- **Content-model constraints** ([#1541](https://github.com/openui/open-ui/issues/1541#issuecomment-7019655303)): **Resolved:** nested rangegroups are non-conforming, and the group legend's descendants should be phrasing but not interactive content. The broader allowed-content model and recovery behavior are proposed in [Proposed Content Model](#proposed-content-model), not settled by this resolution.
 
 ## Considerations and Open Questions
 
