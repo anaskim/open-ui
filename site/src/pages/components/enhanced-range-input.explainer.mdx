@@ -168,6 +168,16 @@ In a supporting browser this still renders as the `<rangegroup>` slider (one thu
 
 The `<rangegroup>` element presents child ranges as handles on a common track, while maintaining the individual inputs for form submission and JavaScript interaction.
 
+### Shared Track Direction
+
+The group owns the shared track's coordinate system. We propose placing the group minimum at the track's **inline-start** and the maximum at **inline-end**, determined by the `<rangegroup>` element's writing mode and direction. Thumb positions, segments, ticks, and pointer-to-value mapping all use this same axis. A child input's own writing mode or direction does not rotate or reverse the shared track.
+
+These are CSS [flow-relative directions](https://drafts.csswg.org/css-writing-modes-4/#logical-directions), not fixed physical sides. For example, with `horizontal-tb`, inline-start is left in LTR and right in RTL; with `sideways-lr` and LTR, it is bottom rather than top. The terms follow the **used** direction, including the effect of [`text-orientation: upright`](https://drafts.csswg.org/css-writing-modes-4/#valdef-text-orientation-upright), rather than reading the computed `direction` value in isolation.
+
+This follows the rendering model proposed for native range inputs in [WHATWG HTML PR #13054](https://github.com/whatwg/html/pull/13054). That change is still under review; this section proposes alignment, not a claim that the HTML change has landed or that all browsers already agree. It does not settle the separate orientation-property questions in [#1525](https://github.com/openui/open-ui/issues/1525).
+
+Rendering direction does not by itself specify arrow-key mappings. Those remain a separate interaction question: any mapping that depends on writing mode or direction must use the group's shared frame, not an independently styled child input. See [Keyboard Interaction](#keyboard-interaction).
+
 ### Empty `<rangegroup>`
 
 A group of **zero** is also valid. A `<rangegroup>` that contains no `<input type="range">` renders **an empty track**: the track is painted as normal, with no thumbs on it ([#1515](https://github.com/openui/open-ui/issues/1515), [telecon 10 Sep 2026](https://www.w3.org/2026/09/10-openui-minutes.html)).
@@ -279,11 +289,10 @@ This approach also defines clear focus behavior.
 
 ### Keyboard Interaction
 
-Each thumb within a `<rangegroup>` is a tab stop (one stop when the group has a single child). Keyboard behavior for each thumb follows the existing conventions for `<input type="range">`:
+Each thumb within a `<rangegroup>` is a tab stop (one stop when the group has a single child). Keyboard behavior for each thumb follows the existing conventions for `<input type="range">`. The directional mapping must be considered separately from the [shared track's rendering direction](#shared-track-direction):
 
 - **Tab / Shift+Tab**: Moves focus between thumbs (and in/out of the group).
-- **Arrow Left / Arrow Down**: Decreases the focused thumb's value by one step.
-- **Arrow Right / Arrow Up**: Increases the focused thumb's value by one step.
+- **Arrow keys**: Adjust the focused thumb's value by one step. The physical key-to-increase/decrease mapping across writing modes and directions remains open; it must not be interpreted as an unconditional Left/Down-decreases, Right/Up-increases rule. Any direction-dependent mapping uses the group's frame.
 - **Page Down**: Decreases the value by a larger step increment.
 - **Page Up**: Increases the value by a larger step increment.
 - **Home**: Sets the focused thumb to its minimum value.
